@@ -1,0 +1,438 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Share a Bit</title>
+    <description>This is my blog, where I scribble about my thoughts , feelings and knowledge . &quot;As the heat of fire reduces wood to ashes, the fire of knowledge burns to ashes all karma - Krishna&quot;
+</description>
+    <link>http://localhost:4000/</link>
+    <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Wed, 23 Nov 2016 20:24:24 +0530</pubDate>
+    <lastBuildDate>Wed, 23 Nov 2016 20:24:24 +0530</lastBuildDate>
+    <generator>Jekyll v3.3.0</generator>
+    
+      <item>
+        <title>Variational Autoencoder (VAE) for Natural Language Processing</title>
+        <description>&lt;p&gt;This is my first ever blog post. So, it might have lot of mistakes and other
+problems. Feel free to share your opinions in the comment section. I hope, this
+post will help some or other in their path towards Deep learning and Neural
+Networks.&lt;/p&gt;
+
+&lt;p&gt;This post is about, &lt;a href=&quot;https://arxiv.org/abs/1312.6114&quot;&gt;Variational AutoEncoder&lt;/a&gt; and how we can make use of
+this wonderful idea of Autoencoders in Natural language processing. Here, I will
+go through the practical implementation of Variational Autoencoder in
+Tensorflow, based on  &lt;a href=&quot;https://arxiv.org/abs/1511.06038&quot;&gt;Neural Variational Inference Document Model&lt;/a&gt;. There
+are many codes for Variational Autoencoder(VAE) available in Tensorflow, this is
+more or less like an extension of all these.&lt;/p&gt;
+
+&lt;p&gt;There are a lot of blogs, which described VAE in detail. So, I will be just
+referring to the core concepts and focus more on the implementation of this for
+NLP  based on &lt;a href=&quot;https://arxiv.org/abs/1511.06038&quot;&gt;Neural Variational Inference Document Model&lt;/a&gt;. Generally, an AutoEncoder
+will reconstruct the input which we passed to it. This, ability of reconstructing an input 
+(conventionally images), can easily be extended to reconstruct a document. Unlike, simple
+AutoEncoders which use, simple matrix multiplication to project the input to hidden state and 
+use the transpose of the same matrix to reconstruct it back from the hidden state, here
+we use different matrices for input to hidden projection and hidden to output reconstruction.
+This can be viewed as, a Neural Network (Deep) , with encoder (input-&amp;gt;hidden) and decoder(hidden-&amp;gt;output).&lt;/p&gt;
+
+&lt;h2 id=&quot;vae-as-topic-model&quot;&gt;&lt;strong&gt;VAE as Topic Model&lt;/strong&gt;&lt;/h2&gt;
+
+&lt;p&gt;Suppose you have trained a model with very large corpus of documents. We will discuss in detail shortly 
+about, how we can feed a document as input to VAE. So, suppose your hidden layer is having 50 units .
+So, basically what we are trying to achieve or what we are achieving internally is projecting the document to 50 latent units. This can be interpreted as, mapping of documents to 50 topics. This has been neatly explained in  &lt;a href=&quot;https://arxiv.org/abs/1511.06038&quot;&gt;Neural Variational Inference Document Model&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;The part of a neural network, which maps the input to the hidden layer can be considered as a encoder. The
+encoder encodes the data or input into a latent vector. Suppose , you are having a huge corpus and you have created the vocabulary for the corpus.&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Let V be the vocabulary. (ie, the number of unique words in the whole corpus)&lt;/li&gt;
+  &lt;li&gt;Each document can represented a Bag of Words vector . That means , each document will be a vector
+ of size V. Each index corresponding to a word in the vocabulary and if the word is present in the document, we will replace that index with count of the word in that document .&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;For a document d1, we can represent it as a vector. This will be of dimension V x 1.&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;% &lt;![CDATA[
+d1^{(1,V)} = \begin{bmatrix}
+0 &amp; 23 &amp; 0 &amp; 45 &amp; . &amp; . &amp; . &amp; 0
+\end{bmatrix} %]]&gt;&lt;/script&gt;
+
+&lt;p&gt;Here 23, 45 represents the count of the words in the document .So, the next thing to do is map the input vector, to a hidden dimension, say 50. This can be achieved by matrix multiplication. Its up to us to think, how many layers deep, we need our encoder to be. Normally, 2 layer deep encoder works well. For, simplicity assume we have one layer, and we need a matrix &lt;script type=&quot;math/tex&quot;&gt;W1^{(V, 50)}&lt;/script&gt;,to get a hidden state &lt;script type=&quot;math/tex&quot;&gt;h^{(50,)}&lt;/script&gt;. This hidden vector is mapped back to the original document, by a matrix &lt;script type=&quot;math/tex&quot;&gt;W2^{(50,V)}&lt;/script&gt;. Here, to calculate the probability of all words in vocab, a softmax function is using.&lt;/p&gt;
+
+&lt;p&gt;In the following figure, &lt;script type=&quot;math/tex&quot;&gt;X^{(1,V)}&lt;/script&gt; is the input vector (Bag of word vector), we need to find hidden layer or vector &lt;script type=&quot;math/tex&quot;&gt;h^{(50,)}&lt;/script&gt; given &lt;script type=&quot;math/tex&quot;&gt;X&lt;/script&gt; (encoder) and we have to reconstruct it back from &lt;script type=&quot;math/tex&quot;&gt;h&lt;/script&gt; (decoder).&lt;/p&gt;
+
+&lt;p style=&quot;text-align:center;&quot;&gt;
+&lt;img src=&quot;http://localhost:4000/assets/variational_autoencoder/nvdm.png&quot; alt=&quot;Failed to load nvdm image&quot; /&gt;
+&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;h3 id=&quot;why-it-is-called-variational-autoencoder&quot;&gt;&lt;em&gt;&lt;strong&gt;Why it is called Variational AutoEncoder&lt;/strong&gt;?&lt;/em&gt;&lt;/h3&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;There are wonderful tutorials out there, like &lt;a href=&quot;https://arxiv.org/abs/1606.05908&quot;&gt;Tutorial on Variational AutoEncoders&lt;/a&gt;. Here, 
+I will give a brief overview about what is happening under the hood.
+Suppose we have a model with some hidden variables &lt;script type=&quot;math/tex&quot;&gt;h&lt;/script&gt; and some input &lt;script type=&quot;math/tex&quot;&gt;X&lt;/script&gt;. We may be 
+interested in inferring the hidden states &lt;script type=&quot;math/tex&quot;&gt;h&lt;/script&gt; from the input &lt;script type=&quot;math/tex&quot;&gt;X&lt;/script&gt; (that is, we want to know 
+what hidden states contributed to us seeing &lt;script type=&quot;math/tex&quot;&gt;X&lt;/script&gt;). We can represent this idea using the &lt;code class=&quot;highlighter-rouge&quot;&gt;
+posterior distribution&lt;/code&gt; &lt;script type=&quot;math/tex&quot;&gt;P(h|X)&lt;/script&gt;&lt;/p&gt;
+
+&lt;p&gt;By conditional probability,&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;P(h | X) = P(h, X)/P(X)&lt;/script&gt;
+
+&lt;p&gt;But it is also true that,&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;P(X | h) = P(h, X) / P(h)&lt;/script&gt;
+
+&lt;p&gt;(because &lt;script type=&quot;math/tex&quot;&gt;P(Z, X)&lt;/script&gt; = &lt;script type=&quot;math/tex&quot;&gt;P(X, Z)&lt;/script&gt;, the joint distribution of &lt;script type=&quot;math/tex&quot;&gt;X&lt;/script&gt; and &lt;script type=&quot;math/tex&quot;&gt;h&lt;/script&gt;)&lt;/p&gt;
+
+&lt;p&gt;So we can rearrange a bit:&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;P(h | X) = P(X | h) P(h) / P(X)&lt;/script&gt;
+
+&lt;p&gt;In our model we have a graphical relationship between &lt;script type=&quot;math/tex&quot;&gt;X&lt;/script&gt; and &lt;script type=&quot;math/tex&quot;&gt;h&lt;/script&gt;. That is, we can infer 
+which states caused &lt;script type=&quot;math/tex&quot;&gt;X&lt;/script&gt;, &lt;script type=&quot;math/tex&quot;&gt;P(h | X)&lt;/script&gt; and we can generate more data from these hidden 
+variables &lt;script type=&quot;math/tex&quot;&gt;P(X | h)&lt;/script&gt;. We also have a prior distribution over our &lt;script type=&quot;math/tex&quot;&gt;h&lt;/script&gt;’s, &lt;script type=&quot;math/tex&quot;&gt;P(Z)&lt;/script&gt;. This is 
+often a Normal distribution. The problem is that &lt;script type=&quot;math/tex&quot;&gt;P(X)&lt;/script&gt; term.&lt;/p&gt;
+
+&lt;p&gt;To get that &lt;code class=&quot;highlighter-rouge&quot;&gt;marginal likelihood&lt;/code&gt; &lt;script type=&quot;math/tex&quot;&gt;P(X)&lt;/script&gt;, we need to marginalize out the &lt;script type=&quot;math/tex&quot;&gt;h&lt;/script&gt;’s. That is:&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;P(X) = \int_h P(X, h) dh&lt;/script&gt;
+
+&lt;p&gt;and the real issue is that the integral over &lt;script type=&quot;math/tex&quot;&gt;h&lt;/script&gt; could be computationally &lt;code class=&quot;highlighter-rouge&quot;&gt;intractable&lt;/code&gt;. 
+That is, the space of &lt;script type=&quot;math/tex&quot;&gt;h&lt;/script&gt; is so large that we cannot integrate over it in a reasonable amount 
+of time. That means we cannot calculate our posterior distribution &lt;script type=&quot;math/tex&quot;&gt;P(h | X)&lt;/script&gt;, since we can’t 
+calculate that denominator term, &lt;script type=&quot;math/tex&quot;&gt;P(X)&lt;/script&gt;.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Note: The word &lt;code class=&quot;highlighter-rouge&quot;&gt;intractable&lt;/code&gt; has a lot of meaning from the computational point of view and theoritical
+standpoint. A good discussion can be found over &lt;a href=&quot;https://www.reddit.com/r/MachineLearning/comments/2jzmav/bayesian_inference_and_intractable_distributions/&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;One trick that’s used to combat this problem is &lt;code class=&quot;highlighter-rouge&quot;&gt;Markov chain Monte Carlo&lt;/code&gt;, where the 
+posterior distribution is set up as the equilibrium distribution of a Markov chain. However, 
+this type of sampling method takes an extremely long time for a high-dimensional integral. The 
+more popular method right now is variationalinference.&lt;/p&gt;
+
+&lt;p&gt;In variational inference, we introduce an approximate posterior distribution to stand in for 
+our true, intractable posterior. The notation for the approximate posterior is &lt;script type=&quot;math/tex&quot;&gt;Q(Z | X)&lt;/script&gt;. 
+Then, to make sure that our approximate posterior is actually a good stand-in for our true 
+posterior, we optimize an objective to ensure that they’re close to one another in terms of a 
+metric called ```Kullback-Leibler Divergence (KL 
+Divergence)’’’. Think of this as a distance function for probability distributions: it measures 
+how close two probability distributions, in this case &lt;script type=&quot;math/tex&quot;&gt;Q(Z | X)&lt;/script&gt; and &lt;script type=&quot;math/tex&quot;&gt;P(Z | X)&lt;/script&gt;, are.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;h3 id=&quot;objective-function&quot;&gt;&lt;em&gt;&lt;strong&gt;Objective Function&lt;/strong&gt;&lt;/em&gt;&lt;/h3&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Lets say we have a document with &lt;script type=&quot;math/tex&quot;&gt;N&lt;/script&gt; words, such that &lt;script type=&quot;math/tex&quot;&gt;N \le V&lt;/script&gt; . So, we basically wants to maximize the likelihood of these &lt;script type=&quot;math/tex&quot;&gt;N&lt;/script&gt; words in the output( while reconstructing). The objective function looks like:&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;log P(X) &gt;= \mathbb{E}_{Q(h|X)} log P(X| h) - KL(Q(h| X) || P(h| X))&lt;/script&gt;
+
+&lt;p&gt;That first term on the right hand side is the reconstruction loss; the second is the KL divergence. So 
+that’s what’s going on in variational inference. That objective function is called the ‘variational lower 
+bound’, the ‘expectation lower bound (ELBO’, the ‘lower bound on the marginal log likelihood’….It has so 
+many names! There is a &lt;a href=&quot;http://blog.shakirm.com/2015/10/machine-learning-trick-of-the-day-4-reparameterisation-tricks/&quot;&gt;re-parameterisation trick&lt;/a&gt; used to sample the hidden states.&lt;/p&gt;
+
+&lt;p&gt;This is actually a common trick in statistics that’s only just caught on in the machine learning community.
+Say we have a very complicated distribution that we want to sample from. This distribution is so strangely 
+shaped that standard sampling tricks won’t help us. To combat this problem, we sample from a simpler 
+distribution and then transform the samples to look like the distribution we actually wanted to sample from.Here’s an example:&lt;/p&gt;
+
+&lt;p&gt;Say we want to sample from a &lt;script type=&quot;math/tex&quot;&gt;\mathcal{N}(\mu, \sigma^2)&lt;/script&gt;
+ distribution (yes, this is actually easy to sample from, but it’s a good example because we can see it in our mind’s eye). Pretend this distribution is hard to sample from. It’s easy to sample from a &lt;script type=&quot;math/tex&quot;&gt;\mathcal{N}(0, 1)&lt;/script&gt; distribution. We generate samples &lt;script type=&quot;math/tex&quot;&gt;\epsilon_i approximate to \mathcal{N}(0, 1)&lt;/script&gt;. Let’s say we get &lt;script type=&quot;math/tex&quot;&gt;n&lt;/script&gt; samples.&lt;/p&gt;
+
+&lt;p&gt;Then to transform these samples to what we really wanted (a &lt;script type=&quot;math/tex&quot;&gt;\mathcal{N}(\mu, \sigma^2)&lt;/script&gt; sample) we do a linear transformation:&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;\epsilon_i * \mu + \sigma&lt;/script&gt;
+
+&lt;p&gt;This transforms our &lt;script type=&quot;math/tex&quot;&gt;\epsilon_i&lt;/script&gt; sample from a &lt;script type=&quot;math/tex&quot;&gt;\mathcal{N}(0, 1)&lt;/script&gt; distribution to a &lt;script type=&quot;math/tex&quot;&gt;\mathcal{N}(\mu, \sigma^2)&lt;/script&gt; distribution. That relationship is possible because the Normal distribution belongs to the location-scale family. Distributions more complicated that that could require nonlinear transformations.
+Please have a look at the referred &lt;a href=&quot;http://blog.shakirm.com/2015/10/machine-learning-trick-of-the-day-4-reparameterisation-tricks/&quot;&gt;link&lt;/a&gt; for more details.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;h3 id=&quot;implementation-in-tensorflow&quot;&gt;&lt;em&gt;&lt;strong&gt;Implementation in Tensorflow&lt;/strong&gt;&lt;/em&gt;&lt;/h3&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The implementation of the code is in Tensorflow. The full code is available &lt;a href=&quot;https://github.com/s4sarath/Deep-Learning-Projects/tree/master/variational_text_inference&quot;&gt;here&lt;/a&gt;. I will go through some key aspects of implementing the Variational Auto Encoder, for Language Processing. The dataset using here is 20 news group &lt;a href=&quot;http://scikit-learn.org/stable/datasets/twenty_newsgroups.html&quot;&gt;dataset&lt;/a&gt;. In practice, instead of going over each document separatey, we will feed a batch of data to the model for training. This is more effective in practice, due to the computational complexity in training a Deep Neural Network.&lt;/p&gt;
+
+&lt;p&gt;The main file to run is defined as &lt;code class=&quot;highlighter-rouge&quot;&gt;main.py&lt;/code&gt; in the repo. In &lt;code class=&quot;highlighter-rouge&quot;&gt;main.py&lt;/code&gt;, we load necessary functions and packages, useful for preprocessing and loading the data.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;text_loader_utils&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;TextLoader&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;variational_model&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;NVDM&lt;/span&gt;
+
+&lt;span class=&quot;c&quot;&gt;######## flags are originally defined in the code #########&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;flags&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FLAGS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;__flags&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+  &lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;sklearn.datasets&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fetch_20newsgroups&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;twenty_train&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fetch_20newsgroups&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;subset&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'train'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;data_&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;twenty_train&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;Download 20 news group data completed&quot;&lt;/span&gt;
+
+  &lt;span class=&quot;n&quot;&gt;data_loader&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;TextLoader&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data_&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;min_count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;25&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;n_samples&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;total_batch&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;n_samples&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FLAGS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;batch_size&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;Data loader has been instantiated&quot;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;gpu_opts&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;GPUOptions&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;per_process_gpu_memory_fraction&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.9&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;with&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;config&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ConfigProto&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;gpu_options&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;gpu_opts&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;sess&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+    
+    &lt;span class=&quot;n&quot;&gt;model&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;NVDM&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sess&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;  &lt;span class=&quot;nb&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;data_loader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;vocab&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FLAGS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;hidden_dim&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+                         &lt;span class=&quot;n&quot;&gt;FLAGS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;encoder_hidden_dim&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;  
+                         &lt;span class=&quot;n&quot;&gt;transfer_fct&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tanh&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                         &lt;span class=&quot;n&quot;&gt;output_activation&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;softmax&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                         &lt;span class=&quot;n&quot;&gt;batch_size&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FLAGS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;batch_size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+                         &lt;span class=&quot;n&quot;&gt;initializer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xavier_init&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dataset&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FLAGS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dataset&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                         &lt;span class=&quot;n&quot;&gt;decay_rate&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FLAGS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;decay_rate&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+                         &lt;span class=&quot;n&quot;&gt;decay_step&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FLAGS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;decay_step&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+                         &lt;span class=&quot;n&quot;&gt;learning_rate&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FLAGS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;learning_rate&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+                         &lt;span class=&quot;n&quot;&gt;checkpoint_dir&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FLAGS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;checkpoint_dir&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+   
+    &lt;span class=&quot;n&quot;&gt;model&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;start_the_model&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FLAGS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;data_loader&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;The &lt;code class=&quot;highlighter-rouge&quot;&gt;TextLoader&lt;/code&gt; class, plays the role of pre-processor and vocab creator. If you are familiar with &lt;code class=&quot;highlighter-rouge&quot;&gt;
+numpy&lt;/code&gt;, creating a Bag of word matrix for the entire dataset ( here, approx 11k documents ) is not 
+feasible from the memory point of view. So, we are creating an iterator, which in real time will iterate 
+and create Bag of words matrix, to feed to the network. This is instantiated in &lt;code class=&quot;highlighter-rouge&quot;&gt;data_loader&lt;/code&gt;, and we 
+are passing it to the model. &lt;code class=&quot;highlighter-rouge&quot;&gt;gpu_options&lt;/code&gt; is configurable, and it is not necessary to set it to 0.9, 
+as Tensorflow is greedy in memory consumption. Further parameters will be discussed on the go. The &lt;code class=&quot;highlighter-rouge&quot;&gt;hidden_dim&lt;/code&gt; is &lt;code class=&quot;highlighter-rouge&quot;&gt;50&lt;/code&gt; and the &lt;code class=&quot;highlighter-rouge&quot;&gt;encoder_hidden_dim&lt;/code&gt; is &lt;code class=&quot;highlighter-rouge&quot;&gt;[500, 500]&lt;/code&gt;. So, the encoder is 2-layer deep here.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;start_the_model&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FLAGS&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;data_loader&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+
+        &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_train&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+
+        &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;Try loading previous models if any&quot;&lt;/span&gt;
+        &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;load&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;checkpoint_dir&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+        &lt;span class=&quot;n&quot;&gt;start_iter&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;step&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;eval&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;Start_iter&quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;start_iter&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;epoch&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;range&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;start_iter&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;start_iter&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FLAGS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;training_epochs&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;batch_data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;data_loader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get_batch&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FLAGS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;batch_size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;loss_sum&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mf&quot;&gt;0.&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;kld_sum&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mf&quot;&gt;0.&lt;/span&gt;
+            &lt;span class=&quot;c&quot;&gt;# Loop over all batches&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;batch_id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;batch_&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;batch_data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+
+                &lt;span class=&quot;n&quot;&gt;batch_id&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;collected_data&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;chunks&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;chunks&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;batch_&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;batch_xs&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mask_xs&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;_&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;data_loader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_bag_of_words&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;collected_data&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;_&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;total_cost&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;recons_loss_&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;kld&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;summary_str&lt;/span&gt;     &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;partial_fit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;batch_xs&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+                                                                          &lt;span class=&quot;n&quot;&gt;batch_xs&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;shape&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mask_xs&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;word_count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;np&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;sum&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mask_xs&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;batch_loss&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;np&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;sum&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;total_cost&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;word_count&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;loss_sum&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;batch_loss&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;kld_sum&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;np&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;sum&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;kld&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+                &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot; Epoch {} Batch Id {} , Loss {} , Kld is {}  &quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;format&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;epoch&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;batch_id&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;batch_loss&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;np&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;sum&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;kld&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)))&lt;/span&gt;
+
+            &lt;span class=&quot;n&quot;&gt;print_ppx&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;loss_sum&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;print_kld&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;kld_sum&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;batch_id&lt;/span&gt;
+
+            &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'| Epoch train: {:d} |'&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;format&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;epoch&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; 
+                   &lt;span class=&quot;s&quot;&gt;'| Perplexity: {:.5f}'&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;format&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;print_ppx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
+                   &lt;span class=&quot;s&quot;&gt;'| KLD: {:.5}'&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;format&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;print_kld&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+
+
+            &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;epoch&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;FLAGS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;save_step&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+              &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;save&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;checkpoint_dir&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;epoch&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;Few things to note here, it is just a wrapper for training. The &lt;code class=&quot;highlighter-rouge&quot;&gt;batch_data&lt;/code&gt; is an iterator of data in 
+batches, which needs to be called everytime once an &lt;code class=&quot;highlighter-rouge&quot;&gt;epoch&lt;/code&gt; is over. Because, it will run out of data, 
+as it it iterates over each batch in every epoch. &lt;code class=&quot;highlighter-rouge&quot;&gt;batch_xs&lt;/code&gt;, is a matrix of Bag of word vector of 
+documents. Normally, &lt;code class=&quot;highlighter-rouge&quot;&gt;batch_xs&lt;/code&gt; is of shape &lt;script type=&quot;math/tex&quot;&gt;(100, V)&lt;/script&gt;, where 100 is the &lt;code class=&quot;highlighter-rouge&quot;&gt;batch_size&lt;/code&gt;. &lt;code class=&quot;highlighter-rouge&quot;&gt;mask_xs
+&lt;/code&gt; is mask, which means wherever the index of &lt;code class=&quot;highlighter-rouge&quot;&gt;batch_xs&lt;/code&gt; is not 0, we will have &lt;code class=&quot;highlighter-rouge&quot;&gt;1&lt;/code&gt;, over that 
+index in &lt;code class=&quot;highlighter-rouge&quot;&gt;mask_xs&lt;/code&gt;. In simple words, &lt;code class=&quot;highlighter-rouge&quot;&gt;batch_xs&lt;/code&gt; hold the count of words in a document, where as &lt;code class=&quot;highlighter-rouge&quot;&gt;
+mask_xs&lt;/code&gt;, holds a value of &lt;code class=&quot;highlighter-rouge&quot;&gt;1&lt;/code&gt; in the corresponding index, just to indicate the presence of the word.&lt;/p&gt;
+
+&lt;p&gt;If you are familar with Tensorflow, we have to feed the necessary data to the corresponding place holders.
+This is happened in &lt;code class=&quot;highlighter-rouge&quot;&gt;partial_fit&lt;/code&gt; method. Note, we are passing &lt;code class=&quot;highlighter-rouge&quot;&gt;batch_xs.shape[0]&lt;/code&gt;, because, 
+suppose we have batch of 100 documents and after pre-processing, we will be having only 98. So, the value 
+of batch after pre-processing might remain same or vary, from the original &lt;code class=&quot;highlighter-rouge&quot;&gt;batch_size&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Lets have a look at each function one by one. This might be boring to those who are super familiar with &lt;code class=&quot;highlighter-rouge&quot;&gt;Tensorflow&lt;/code&gt;. But, those who wants to know more in a practical point of view, this might be useful. Inside the &lt;code class=&quot;highlighter-rouge&quot;&gt;NVDM&lt;/code&gt; class, we have different functions.&lt;/p&gt;
+
+&lt;p&gt;The &lt;code class=&quot;highlighter-rouge&quot;&gt;create_network&lt;/code&gt;, will call &lt;code class=&quot;highlighter-rouge&quot;&gt;_initialize_weights&lt;/code&gt; method, which is responsible for buliding the &lt;code class=&quot;highlighter-rouge&quot;&gt;Weights&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;biases&lt;/code&gt;, for both encoder and decoder. It has been written, in such a way that, it will accept any layer of &lt;code class=&quot;highlighter-rouge&quot;&gt;encoder_hidden_dim&lt;/code&gt;. Here, it is &lt;code class=&quot;highlighter-rouge&quot;&gt;[500, 500]&lt;/code&gt;, so we will have &lt;code class=&quot;highlighter-rouge&quot;&gt;self.Weights_encoder&lt;/code&gt; a dictionary, with keys as  &lt;code class=&quot;highlighter-rouge&quot;&gt;W_1&lt;/code&gt; ,&lt;code class=&quot;highlighter-rouge&quot;&gt;W_2&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;'out_mean'&lt;/code&gt; and  &lt;code class=&quot;highlighter-rouge&quot;&gt;'out_log_sigma'&lt;/code&gt;, which is useful in finding a new sample as explained in re-parameterization trick. ‘&lt;code class=&quot;highlighter-rouge&quot;&gt;self._encoder_network&lt;/code&gt;, is easy to understand, it has basic matrix multiplication with a non-linearity on the top, except at places where &lt;code class=&quot;highlighter-rouge&quot;&gt;out_mean&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;out_log_sigma&lt;/code&gt; is used.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;z_mean&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;z_log_sigma_sq&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_encoder_network&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Weights_encoder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Biases_encoder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;c&quot;&gt;# Draw one sample z from Gaussian distribution&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;eps&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;random_normal&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dynamic_batch_size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;hidden_dim&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+                       &lt;span class=&quot;n&quot;&gt;dtype&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;float32&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# z = mu + sigma*epsilon ( Re-parameterization)&lt;/span&gt;
+&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;z&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;add&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;z_mean&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+                &lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;exp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;z_log_sigma_sq&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;eps&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;This &lt;code class=&quot;highlighter-rouge&quot;&gt;self.z&lt;/code&gt; sample, is used to re-construct the document vector (batch of document vector in practice). This is happening inside &lt;code class=&quot;highlighter-rouge&quot;&gt;self._generator_network&lt;/code&gt;.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;n&quot;&gt;x_reconstr_mean&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;add&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;matmul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;z&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;weights&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'out_mean'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])),&lt;/span&gt; 
+                                     &lt;span class=&quot;n&quot;&gt;biases&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;'out_mean'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;The above equation is equivalent to Eq.24 in &lt;a href=&quot;https://arxiv.org/abs/1511.06038&quot;&gt;here&lt;/a&gt;. There, the equation is shown on the basis of each word and &lt;script type=&quot;math/tex&quot;&gt;(x_i)&lt;/script&gt; represents, the One-hot_K vector associated with each word in the vocab. Note, this one hot vector for words are different from Bag of words of document.&lt;/p&gt;
+
+&lt;p&gt;So, we had all components necessary to calculate the loss function. In the Objective section, I have pointed out the loss function. This can be viewed as maximizing the log-likelihood of words present in each document and minimzing the KL divergence, between the distributions.&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;log P(X) &gt;= \mathbb{E}_{Q(h|X)} log P(X| h) - KL(Q(h| X) || P(h| X))&lt;/script&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;\mathbb{E}_{Q(h|X)} log P(X| h) = \sum_{i=1}^L\sum_{n=1}^Nlog(log P(X| h)&lt;/script&gt;
+
+&lt;p&gt;&lt;script type=&quot;math/tex&quot;&gt;L&lt;/script&gt; is the number of documents and &lt;script type=&quot;math/tex&quot;&gt;N&lt;/script&gt; is the number of words (not the count of all words), present in each document. This will vary with document. To achieve this in fast matrix  operation, after calculating the ‘'’softmax’’’, we multiply the resultant matrix with the &lt;code class=&quot;highlighter-rouge&quot;&gt;mask_xs&lt;/code&gt; ( which has 1 at the index where words are present and 0 if words are absent), matrix and then do the summation.&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;log P(X| h = softmax(-h^TR + bias)&lt;/script&gt;
+
+&lt;p&gt;&lt;script type=&quot;math/tex&quot;&gt;R^{(50,V)}&lt;/script&gt;, is the matrix we have in &lt;code class=&quot;highlighter-rouge&quot;&gt;self.Weights_generator['out_mean']&lt;/code&gt;. The interesting thing is once, we train the model, this &lt;script type=&quot;math/tex&quot;&gt;R&lt;/script&gt;, acts as the &lt;code class=&quot;highlighter-rouge&quot;&gt;embedding matrix&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;The loss function are defined inside &lt;code class=&quot;highlighter-rouge&quot;&gt;_create_loss_optimizer&lt;/code&gt;.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;n&quot;&gt;logits&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;softmax&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;X_reconstruction_mean&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.0001&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;reconstr_loss&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;reduce_sum&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mul&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;logits&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;X&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;kld&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.5&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;reduce_sum&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;square&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;z_mean&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;z_log_sigma_sq&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;exp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;z_log_sigma_sq&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cost&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;reconstr_loss&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;kld&lt;/span&gt;   &lt;span class=&quot;c&quot;&gt;# average over batch&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;# Use ADAM optimizer&lt;/span&gt;
+
+&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;optimizer&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;train&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;AdamOptimizer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;learning_rate&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;learning_rate&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;minimize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cost&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;global_step&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;step&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;The equations for KL divergence is quite common and you can find it everywhere. In the original &lt;a href=&quot;https://arxiv.org/abs/1511.06038&quot;&gt;paper&lt;/a&gt;, author used alternative update. But, i don’t think that is necessary. Here, we sum up the encoder loss and decoder loss. In the code, &lt;code class=&quot;highlighter-rouge&quot;&gt;generator&lt;/code&gt;, stands for &lt;code class=&quot;highlighter-rouge&quot;&gt;decoder&lt;/code&gt;. We use, &lt;code class=&quot;highlighter-rouge&quot;&gt;AdamOptimizer&lt;/code&gt; for training. So, this is what is happening under the hood and the main wrapper fuunction is &lt;code class=&quot;highlighter-rouge&quot;&gt;_partial_fit&lt;/code&gt;.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;partial_fit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;X&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dynamic_batch_size&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;MASK&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+
+  
+        &lt;span class=&quot;n&quot;&gt;opt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cost&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;recons_loss&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;kld&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sess&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;run&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;optimizer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cost&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;reconstr_loss&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;kld&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; 
+                                  &lt;span class=&quot;n&quot;&gt;feed_dict&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;X&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;X&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dynamic_batch_size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dynamic_batch_size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                                            &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;MASK&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;MASK&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;})&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;opt&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cost&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;recons_loss&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;kld&lt;/span&gt; &lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;h3 id=&quot;a-note-about-non-linear-functions&quot;&gt;&lt;em&gt;&lt;strong&gt;A note about non-linear functions&lt;/strong&gt;&lt;/em&gt;&lt;/h3&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;In the &lt;a href=&quot;https://arxiv.org/abs/1511.06038&quot;&gt;paper&lt;/a&gt;, author has used &lt;code class=&quot;highlighter-rouge&quot;&gt;ReLU&lt;/code&gt;, activation functions. But, don’t use it. I was 
+getting &lt;code class=&quot;highlighter-rouge&quot;&gt;nan&lt;/code&gt; values after 2 iterations. The reason, I am thinking is our document vector has some 
+large values like 123, 371 , which are the count of words in the document. As, ReLU is doing max(0, N), this might be the reason. Use &lt;code class=&quot;highlighter-rouge&quot;&gt;tanh&lt;/code&gt;. It will works fine. If you still want to use, &lt;code class=&quot;highlighter-rouge&quot;&gt;ReLU&lt;/code&gt;, normalize your Bag of word matrix each time before passing to the model.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;h3 id=&quot;evaluation-of-the-model&quot;&gt;&lt;em&gt;&lt;strong&gt;Evaluation of the model&lt;/strong&gt;&lt;/em&gt;&lt;/h3&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;I have ran the model in p2.xlarge in AWS, for 1000 iterations and it took around 6 hrs. The model can be 
+found inside the github &lt;a href=&quot;https://github.com/s4sarath/Deep-Learning-Projects/tree/master/variational_text_inference&quot;&gt;repo&lt;/a&gt;. I have used the embedding matrix to find similar words and results are 
+very good. I have uploaded a ipython notebook &lt;code class=&quot;highlighter-rouge&quot;&gt;model_evaluation.ipynb&lt;/code&gt;, which shows how to use the 
+model to extract the embedding matrix and find similar words.&lt;/p&gt;
+
+&lt;p&gt;Here are examples of some words&lt;/p&gt;
+
+&lt;p&gt;jesus&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;[('jesus', 0.99999988),
+ ('christ', 0.85499293),
+ ('christian', 0.77007663),
+ ('christians', 0.75781548),
+ ('bible', 0.75542903),
+ ('heaven', 0.74329948),
+ ('god', 0.73894531),
+ ('sin', 0.72564238),
+ ('follow', 0.71326089),
+ ('faith', 0.69616199)]
+&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;scientist&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;[('scientist', 1.0),
+ ('hypothesis', 0.79111576),
+ ('mathematics', 0.7701571),
+ ('empirical', 0.74546576),
+ ('experiment', 0.74009466),
+ ('scientists', 0.73293155),
+ ('observations', 0.72646093),
+ ('psychology', 0.72322875),
+ ('homeopathy', 0.7231313),
+ ('methodology', 0.71882892)]
+&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;football&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;[('football', 1.0000001),
+ ('stadium', 0.85528636),
+ ('basketball', 0.8517698),
+ ('philly', 0.83852005),
+ ('mlb', 0.83592558),
+ ('robbie', 0.83328015),
+ ('anyways', 0.82795608),
+ ('seats', 0.82188618),
+ ('miami', 0.82166839),
+ ('champs', 0.81938583)]
+&lt;/code&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;h3 id=&quot;similar-documents&quot;&gt;&lt;em&gt;&lt;strong&gt;Similar Documents&lt;/strong&gt;&lt;/em&gt;&lt;/h3&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The hidden dimensions for each document can be used to calculate similar documents. The function used here
+is mentioned in the notebook. This is very useful in information retrieving tasks.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;h3 id=&quot;clustering&quot;&gt;&lt;em&gt;&lt;strong&gt;Clustering&lt;/strong&gt;&lt;/em&gt;&lt;/h3&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The same model, with the hidden  representaions can be used for clustering. The following 
+figure has been generated on 20 news group dataset, by projecting each 50 dimension hidden 
+state of every document into &lt;code class=&quot;highlighter-rouge&quot;&gt;tsne&lt;/code&gt; . The plot looks very promising .&lt;/p&gt;
+
+&lt;p style=&quot;text-align:center;&quot;&gt;
+&lt;img src=&quot;http://localhost:4000/assets/variational_autoencoder/20-news-group.png&quot; alt=&quot;Failed to load 20-
+news-group image&quot; /&gt;
+&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;I would like to thank the author’s of the &lt;a href=&quot;https://arxiv.org/abs/1511.06038&quot;&gt;paper&lt;/a&gt;, for giving a intuitive idea of VAE 
+in NLP point of view. And I would like to thank my friend Carolyn Augusta, (explanation about 
+Variational Bayes and Re-parameterization was from her courtesy). I hope, she will be having a 
+detailed writing about the Variational Bayes soon. Please do point out the mistakes, if you 
+found any.&lt;/p&gt;
+
+</description>
+        <pubDate>Wed, 23 Nov 2016 15:30:00 +0530</pubDate>
+        <link>http://localhost:4000/2016/11/23/variational_autoenocder_for_Natural_Language_Processing</link>
+        <guid isPermaLink="true">http://localhost:4000/2016/11/23/variational_autoenocder_for_Natural_Language_Processing</guid>
+        
+        <category>deep</category>
+        
+        <category>learning,</category>
+        
+        <category>nlp,</category>
+        
+        <category>autoencoder</category>
+        
+        <category>,</category>
+        
+        <category>variational</category>
+        
+        <category>,</category>
+        
+        <category>tensorflow</category>
+        
+        
+      </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Variational Autoencoder (VAE) for Natural Language Processing</title>
+  <meta name="description" content="This is my first ever blog post. So, it might have lot of mistakes and otherproblems. Feel free to share your opinions in the comment section. I hope, thispo...">
+
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="canonical" href="http://localhost:4000/2016/11/23/variational_autoenocder_for_Natural_Language_Processing">
+  <link rel="alternate" type="application/rss+xml" title="Share a Bit" href="http://localhost:4000/feed.xml" />
+</head>
+
+
+
+  <body>
+
+    <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/">Share a Bit</a>
+
+    <nav class="site-nav">
+      <a href="#" class="menu-icon">
+        <svg viewBox="0 0 18 15">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </a>
+
+      <div class="trigger">
+        
+          
+          <a class="page-link" href="/archive.html">Archive</a>
+          
+        
+          
+        
+          
+        
+          
+          <a class="page-link" href="/about/">About</a>
+          
+        
+          
+        
+          
+        
+      </div>
+    </nav>
+
+  </div>
+
+</header>
+
+
+    <div class="page-content">
+      <div class="wrapper">
+        <div class="post">
+
+  <header class="post-header">
+    <h1 class="post-title">Variational Autoencoder (VAE) for Natural Language Processing</h1>
+    <p class="post-meta">Nov 23, 2016</p>
+  </header>
+
+  <article class="post-content">
+    <p>This is my first ever blog post. So, it might have lot of mistakes and other
+problems. Feel free to share your opinions in the comment section. I hope, this
+post will help some or other in their path towards Deep learning and Neural
+Networks.</p>
+
+<p>This post is about, <a href="https://arxiv.org/abs/1312.6114">Variational AutoEncoder</a> and how we can make use of
+this wonderful idea of Autoencoders in Natural language processing. Here, I will
+go through the practical implementation of Variational Autoencoder in
+Tensorflow, based on  <a href="https://arxiv.org/abs/1511.06038">Neural Variational Inference Document Model</a>. There
+are many codes for Variational Autoencoder(VAE) available in Tensorflow, this is
+more or less like an extension of all these.</p>
+
+<p>There are a lot of blogs, which described VAE in detail. So, I will be just
+referring to the core concepts and focus more on the implementation of this for
+NLP  based on <a href="https://arxiv.org/abs/1511.06038">Neural Variational Inference Document Model</a>. Generally, an AutoEncoder
+will reconstruct the input which we passed to it. This, ability of reconstructing an input 
+(conventionally images), can easily be extended to reconstruct a document. Unlike, simple
+AutoEncoders which use, simple matrix multiplication to project the input to hidden state and 
+use the transpose of the same matrix to reconstruct it back from the hidden state, here
+we use different matrices for input to hidden projection and hidden to output reconstruction.
+This can be viewed as, a Neural Network (Deep) , with encoder (input-&gt;hidden) and decoder(hidden-&gt;output).</p>
+
+<h2 id="vae-as-topic-model"><strong>VAE as Topic Model</strong></h2>
+
+<p>Suppose you have trained a model with very large corpus of documents. We will discuss in detail shortly 
+about, how we can feed a document as input to VAE. So, suppose your hidden layer is having 50 units .
+So, basically what we are trying to achieve or what we are achieving internally is projecting the document to 50 latent units. This can be interpreted as, mapping of documents to 50 topics. This has been neatly explained in  <a href="https://arxiv.org/abs/1511.06038">Neural Variational Inference Document Model</a>.</p>
+
+<p>The part of a neural network, which maps the input to the hidden layer can be considered as a encoder. The
+encoder encodes the data or input into a latent vector. Suppose , you are having a huge corpus and you have created the vocabulary for the corpus.</p>
+
+<ol>
+  <li>Let V be the vocabulary. (ie, the number of unique words in the whole corpus)</li>
+  <li>Each document can represented a Bag of Words vector . That means , each document will be a vector
+ of size V. Each index corresponding to a word in the vocabulary and if the word is present in the document, we will replace that index with count of the word in that document .</li>
+</ol>
+
+<p>For a document d1, we can represent it as a vector. This will be of dimension V x 1.</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+d1^{(1,V)} = \begin{bmatrix}
+0 & 23 & 0 & 45 & . & . & . & 0
+\end{bmatrix} %]]></script>
+
+<p>Here 23, 45 represents the count of the words in the document .So, the next thing to do is map the input vector, to a hidden dimension, say 50. This can be achieved by matrix multiplication. Its up to us to think, how many layers deep, we need our encoder to be. Normally, 2 layer deep encoder works well. For, simplicity assume we have one layer, and we need a matrix <script type="math/tex">W1^{(V, 50)}</script>,to get a hidden state <script type="math/tex">h^{(50,)}</script>. This hidden vector is mapped back to the original document, by a matrix <script type="math/tex">W2^{(50,V)}</script>. Here, to calculate the probability of all words in vocab, a softmax function is using.</p>
+
+<p>In the following figure, <script type="math/tex">X^{(1,V)}</script> is the input vector (Bag of word vector), we need to find hidden layer or vector <script type="math/tex">h^{(50,)}</script> given <script type="math/tex">X</script> (encoder) and we have to reconstruct it back from <script type="math/tex">h</script> (decoder).</p>
+
+<p style="text-align:center;">
+<img src="http://localhost:4000/assets/variational_autoencoder/nvdm.png" alt="Failed to load nvdm image" />
+</p>
+
+<ul>
+  <li>
+    <h3 id="why-it-is-called-variational-autoencoder"><em><strong>Why it is called Variational AutoEncoder</strong>?</em></h3>
+  </li>
+</ul>
+
+<p>There are wonderful tutorials out there, like <a href="https://arxiv.org/abs/1606.05908">Tutorial on Variational AutoEncoders</a>. Here, 
+I will give a brief overview about what is happening under the hood.
+Suppose we have a model with some hidden variables <script type="math/tex">h</script> and some input <script type="math/tex">X</script>. We may be 
+interested in inferring the hidden states <script type="math/tex">h</script> from the input <script type="math/tex">X</script> (that is, we want to know 
+what hidden states contributed to us seeing <script type="math/tex">X</script>). We can represent this idea using the <code class="highlighter-rouge">
+posterior distribution</code> <script type="math/tex">P(h|X)</script></p>
+
+<p>By conditional probability,</p>
+
+<script type="math/tex; mode=display">P(h | X) = P(h, X)/P(X)</script>
+
+<p>But it is also true that,</p>
+
+<script type="math/tex; mode=display">P(X | h) = P(h, X) / P(h)</script>
+
+<p>(because <script type="math/tex">P(Z, X)</script> = <script type="math/tex">P(X, Z)</script>, the joint distribution of <script type="math/tex">X</script> and <script type="math/tex">h</script>)</p>
+
+<p>So we can rearrange a bit:</p>
+
+<script type="math/tex; mode=display">P(h | X) = P(X | h) P(h) / P(X)</script>
+
+<p>In our model we have a graphical relationship between <script type="math/tex">X</script> and <script type="math/tex">h</script>. That is, we can infer 
+which states caused <script type="math/tex">X</script>, <script type="math/tex">P(h | X)</script> and we can generate more data from these hidden 
+variables <script type="math/tex">P(X | h)</script>. We also have a prior distribution over our <script type="math/tex">h</script>’s, <script type="math/tex">P(Z)</script>. This is 
+often a Normal distribution. The problem is that <script type="math/tex">P(X)</script> term.</p>
+
+<p>To get that <code class="highlighter-rouge">marginal likelihood</code> <script type="math/tex">P(X)</script>, we need to marginalize out the <script type="math/tex">h</script>’s. That is:</p>
+
+<script type="math/tex; mode=display">P(X) = \int_h P(X, h) dh</script>
+
+<p>and the real issue is that the integral over <script type="math/tex">h</script> could be computationally <code class="highlighter-rouge">intractable</code>. 
+That is, the space of <script type="math/tex">h</script> is so large that we cannot integrate over it in a reasonable amount 
+of time. That means we cannot calculate our posterior distribution <script type="math/tex">P(h | X)</script>, since we can’t 
+calculate that denominator term, <script type="math/tex">P(X)</script>.</p>
+
+<blockquote>
+  <p>Note: The word <code class="highlighter-rouge">intractable</code> has a lot of meaning from the computational point of view and theoritical
+standpoint. A good discussion can be found over <a href="https://www.reddit.com/r/MachineLearning/comments/2jzmav/bayesian_inference_and_intractable_distributions/">here</a>.</p>
+</blockquote>
+
+<p>One trick that’s used to combat this problem is <code class="highlighter-rouge">Markov chain Monte Carlo</code>, where the 
+posterior distribution is set up as the equilibrium distribution of a Markov chain. However, 
+this type of sampling method takes an extremely long time for a high-dimensional integral. The 
+more popular method right now is variationalinference.</p>
+
+<p>In variational inference, we introduce an approximate posterior distribution to stand in for 
+our true, intractable posterior. The notation for the approximate posterior is <script type="math/tex">Q(Z | X)</script>. 
+Then, to make sure that our approximate posterior is actually a good stand-in for our true 
+posterior, we optimize an objective to ensure that they’re close to one another in terms of a 
+metric called ```Kullback-Leibler Divergence (KL 
+Divergence)’’’. Think of this as a distance function for probability distributions: it measures 
+how close two probability distributions, in this case <script type="math/tex">Q(Z | X)</script> and <script type="math/tex">P(Z | X)</script>, are.</p>
+
+<ul>
+  <li>
+    <h3 id="objective-function"><em><strong>Objective Function</strong></em></h3>
+  </li>
+</ul>
+
+<p>Lets say we have a document with <script type="math/tex">N</script> words, such that <script type="math/tex">N \le V</script> . So, we basically wants to maximize the likelihood of these <script type="math/tex">N</script> words in the output( while reconstructing). The objective function looks like:</p>
+
+<script type="math/tex; mode=display">log P(X) >= \mathbb{E}_{Q(h|X)} log P(X| h) - KL(Q(h| X) || P(h| X))</script>
+
+<p>That first term on the right hand side is the reconstruction loss; the second is the KL divergence. So 
+that’s what’s going on in variational inference. That objective function is called the ‘variational lower 
+bound’, the ‘expectation lower bound (ELBO’, the ‘lower bound on the marginal log likelihood’….It has so 
+many names! There is a <a href="http://blog.shakirm.com/2015/10/machine-learning-trick-of-the-day-4-reparameterisation-tricks/">re-parameterisation trick</a> used to sample the hidden states.</p>
+
+<p>This is actually a common trick in statistics that’s only just caught on in the machine learning community.
+Say we have a very complicated distribution that we want to sample from. This distribution is so strangely 
+shaped that standard sampling tricks won’t help us. To combat this problem, we sample from a simpler 
+distribution and then transform the samples to look like the distribution we actually wanted to sample from.Here’s an example:</p>
+
+<p>Say we want to sample from a <script type="math/tex">\mathcal{N}(\mu, \sigma^2)</script>
+ distribution (yes, this is actually easy to sample from, but it’s a good example because we can see it in our mind’s eye). Pretend this distribution is hard to sample from. It’s easy to sample from a <script type="math/tex">\mathcal{N}(0, 1)</script> distribution. We generate samples <script type="math/tex">\epsilon_i approximate to \mathcal{N}(0, 1)</script>. Let’s say we get <script type="math/tex">n</script> samples.</p>
+
+<p>Then to transform these samples to what we really wanted (a <script type="math/tex">\mathcal{N}(\mu, \sigma^2)</script> sample) we do a linear transformation:</p>
+
+<script type="math/tex; mode=display">\epsilon_i * \mu + \sigma</script>
+
+<p>This transforms our <script type="math/tex">\epsilon_i</script> sample from a <script type="math/tex">\mathcal{N}(0, 1)</script> distribution to a <script type="math/tex">\mathcal{N}(\mu, \sigma^2)</script> distribution. That relationship is possible because the Normal distribution belongs to the location-scale family. Distributions more complicated that that could require nonlinear transformations.
+Please have a look at the referred <a href="http://blog.shakirm.com/2015/10/machine-learning-trick-of-the-day-4-reparameterisation-tricks/">link</a> for more details.</p>
+
+<ul>
+  <li>
+    <h3 id="implementation-in-tensorflow"><em><strong>Implementation in Tensorflow</strong></em></h3>
+  </li>
+</ul>
+
+<p>The implementation of the code is in Tensorflow. The full code is available <a href="https://github.com/s4sarath/Deep-Learning-Projects/tree/master/variational_text_inference">here</a>. I will go through some key aspects of implementing the Variational Auto Encoder, for Language Processing. The dataset using here is 20 news group <a href="http://scikit-learn.org/stable/datasets/twenty_newsgroups.html">dataset</a>. In practice, instead of going over each document separatey, we will feed a batch of data to the model for training. This is more effective in practice, due to the computational complexity in training a Deep Neural Network.</p>
+
+<p>The main file to run is defined as <code class="highlighter-rouge">main.py</code> in the repo. In <code class="highlighter-rouge">main.py</code>, we load necessary functions and packages, useful for preprocessing and loading the data.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">from</span> <span class="nn">text_loader_utils</span> <span class="kn">import</span> <span class="n">TextLoader</span>
+<span class="kn">from</span> <span class="nn">variational_model</span> <span class="kn">import</span> <span class="n">NVDM</span>
+
+<span class="c">######## flags are originally defined in the code #########</span>
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">_</span><span class="p">):</span>
+  <span class="k">print</span><span class="p">(</span><span class="n">flags</span><span class="o">.</span><span class="n">FLAGS</span><span class="o">.</span><span class="n">__flags</span><span class="p">)</span>
+
+  <span class="kn">from</span> <span class="nn">sklearn.datasets</span> <span class="kn">import</span> <span class="n">fetch_20newsgroups</span>
+  <span class="n">twenty_train</span> <span class="o">=</span> <span class="n">fetch_20newsgroups</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="s">'train'</span><span class="p">)</span>
+  <span class="n">data_</span> <span class="o">=</span> <span class="n">twenty_train</span><span class="o">.</span><span class="n">data</span>
+  <span class="k">print</span> <span class="s">"Download 20 news group data completed"</span>
+
+  <span class="n">data_loader</span> <span class="o">=</span> <span class="n">TextLoader</span><span class="p">(</span><span class="n">data_</span> <span class="p">,</span> <span class="n">min_count</span> <span class="o">=</span> <span class="mi">25</span><span class="p">)</span>
+  <span class="n">n_samples</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_</span><span class="p">)</span>
+  <span class="n">total_batch</span> <span class="o">=</span> <span class="n">n_samples</span><span class="o">/</span><span class="n">FLAGS</span><span class="o">.</span><span class="n">batch_size</span>
+  <span class="k">print</span> <span class="s">"Data loader has been instantiated"</span>
+  <span class="n">gpu_opts</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">GPUOptions</span><span class="p">(</span><span class="n">per_process_gpu_memory_fraction</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+  <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">Session</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">ConfigProto</span><span class="p">(</span><span class="n">gpu_options</span><span class="o">=</span><span class="n">gpu_opts</span><span class="p">))</span> <span class="k">as</span> <span class="n">sess</span><span class="p">:</span>
+    
+    <span class="n">model</span> <span class="o">=</span> <span class="n">NVDM</span><span class="p">(</span><span class="n">sess</span> <span class="p">,</span>  <span class="nb">len</span><span class="p">(</span><span class="n">data_loader</span><span class="o">.</span><span class="n">vocab</span><span class="p">),</span> <span class="n">FLAGS</span><span class="o">.</span><span class="n">hidden_dim</span><span class="p">,</span> 
+                         <span class="n">FLAGS</span><span class="o">.</span><span class="n">encoder_hidden_dim</span> <span class="p">,</span>  
+                         <span class="n">transfer_fct</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">tanh</span> <span class="p">,</span>
+                         <span class="n">output_activation</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">softmax</span><span class="p">,</span>
+                         <span class="n">batch_size</span><span class="o">=</span><span class="n">FLAGS</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> 
+                         <span class="n">initializer</span><span class="o">=</span><span class="n">xavier_init</span> <span class="p">,</span> <span class="n">dataset</span> <span class="o">=</span> <span class="n">FLAGS</span><span class="o">.</span><span class="n">dataset</span> <span class="p">,</span>
+                         <span class="n">decay_rate</span> <span class="o">=</span> <span class="n">FLAGS</span><span class="o">.</span><span class="n">decay_rate</span> <span class="p">,</span> 
+                         <span class="n">decay_step</span> <span class="o">=</span> <span class="n">FLAGS</span><span class="o">.</span><span class="n">decay_step</span> <span class="p">,</span> 
+                         <span class="n">learning_rate</span> <span class="o">=</span> <span class="n">FLAGS</span><span class="o">.</span><span class="n">learning_rate</span> <span class="p">,</span> 
+                         <span class="n">checkpoint_dir</span> <span class="o">=</span> <span class="n">FLAGS</span><span class="o">.</span><span class="n">checkpoint_dir</span> <span class="p">)</span>
+
+   
+    <span class="n">model</span><span class="o">.</span><span class="n">start_the_model</span><span class="p">(</span><span class="n">FLAGS</span> <span class="p">,</span> <span class="n">data_loader</span><span class="p">)</span></code></pre></figure>
+
+<p>The <code class="highlighter-rouge">TextLoader</code> class, plays the role of pre-processor and vocab creator. If you are familiar with <code class="highlighter-rouge">
+numpy</code>, creating a Bag of word matrix for the entire dataset ( here, approx 11k documents ) is not 
+feasible from the memory point of view. So, we are creating an iterator, which in real time will iterate 
+and create Bag of words matrix, to feed to the network. This is instantiated in <code class="highlighter-rouge">data_loader</code>, and we 
+are passing it to the model. <code class="highlighter-rouge">gpu_options</code> is configurable, and it is not necessary to set it to 0.9, 
+as Tensorflow is greedy in memory consumption. Further parameters will be discussed on the go. The <code class="highlighter-rouge">hidden_dim</code> is <code class="highlighter-rouge">50</code> and the <code class="highlighter-rouge">encoder_hidden_dim</code> is <code class="highlighter-rouge">[500, 500]</code>. So, the encoder is 2-layer deep here.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="k">def</span> <span class="nf">start_the_model</span><span class="p">(</span><span class="bp">self</span> <span class="p">,</span> <span class="n">FLAGS</span> <span class="p">,</span> <span class="n">data_loader</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_train</span><span class="p">()</span>
+
+        <span class="k">print</span> <span class="s">"Try loading previous models if any"</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_dir</span><span class="p">)</span>
+
+        <span class="n">start_iter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">step</span><span class="o">.</span><span class="nb">eval</span><span class="p">()</span>
+        <span class="k">print</span> <span class="s">"Start_iter"</span> <span class="p">,</span> <span class="n">start_iter</span>
+        <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">start_iter</span> <span class="p">,</span> <span class="n">start_iter</span> <span class="o">+</span> <span class="n">FLAGS</span><span class="o">.</span><span class="n">training_epochs</span><span class="p">):</span>
+            <span class="n">batch_data</span> <span class="o">=</span> <span class="n">data_loader</span><span class="o">.</span><span class="n">get_batch</span><span class="p">(</span><span class="n">FLAGS</span><span class="o">.</span><span class="n">batch_size</span><span class="p">)</span>
+            <span class="n">loss_sum</span> <span class="o">=</span> <span class="mf">0.</span>
+            <span class="n">kld_sum</span> <span class="o">=</span> <span class="mf">0.</span>
+            <span class="c"># Loop over all batches</span>
+            <span class="n">batch_id</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">batch_</span> <span class="ow">in</span> <span class="n">batch_data</span><span class="p">:</span>
+
+                <span class="n">batch_id</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">collected_data</span> <span class="o">=</span> <span class="p">[</span><span class="n">chunks</span> <span class="k">for</span> <span class="n">chunks</span> <span class="ow">in</span> <span class="n">batch_</span><span class="p">]</span>
+                <span class="n">batch_xs</span> <span class="p">,</span> <span class="n">mask_xs</span> <span class="p">,</span> <span class="n">_</span>  <span class="o">=</span> <span class="n">data_loader</span><span class="o">.</span><span class="n">_bag_of_words</span><span class="p">(</span><span class="n">collected_data</span><span class="p">)</span>
+                <span class="n">_</span> <span class="p">,</span> <span class="n">total_cost</span> <span class="p">,</span> <span class="n">recons_loss_</span> <span class="p">,</span> <span class="n">kld</span> <span class="p">,</span> <span class="n">summary_str</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">partial_fit</span><span class="p">(</span><span class="n">batch_xs</span><span class="p">,</span> 
+                                                                          <span class="n">batch_xs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">mask_xs</span><span class="p">)</span>
+                <span class="n">word_count</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="nb">sum</span><span class="p">(</span><span class="n">mask_xs</span><span class="p">)</span>
+                <span class="n">batch_loss</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="nb">sum</span><span class="p">(</span><span class="n">total_cost</span><span class="p">)</span><span class="o">/</span><span class="n">word_count</span>
+                <span class="n">loss_sum</span> <span class="o">+=</span> <span class="n">batch_loss</span>
+                <span class="n">kld_sum</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="nb">sum</span><span class="p">(</span><span class="n">kld</span><span class="p">)</span>
+
+                <span class="k">print</span> <span class="p">(</span><span class="s">" Epoch {} Batch Id {} , Loss {} , Kld is {}  "</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">epoch</span><span class="o">+</span><span class="mi">1</span> <span class="p">,</span> <span class="n">batch_id</span> <span class="p">,</span> <span class="n">batch_loss</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="nb">sum</span><span class="p">(</span><span class="n">kld</span><span class="p">)))</span>
+
+            <span class="n">print_ppx</span> <span class="o">=</span> <span class="n">loss_sum</span>
+            <span class="n">print_kld</span> <span class="o">=</span> <span class="n">kld_sum</span><span class="o">/</span><span class="n">batch_id</span>
+
+            <span class="k">print</span><span class="p">(</span><span class="s">'| Epoch train: {:d} |'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">epoch</span><span class="o">+</span><span class="mi">1</span><span class="p">),</span> 
+                   <span class="s">'| Perplexity: {:.5f}'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">print_ppx</span><span class="p">),</span>
+                   <span class="s">'| KLD: {:.5}'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">print_kld</span><span class="p">))</span>
+
+
+            <span class="k">if</span> <span class="n">epoch</span> <span class="o">%</span> <span class="n">FLAGS</span><span class="o">.</span><span class="n">save_step</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+              <span class="bp">self</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_dir</span><span class="p">,</span> <span class="n">epoch</span></code></pre></figure>
+
+<p>Few things to note here, it is just a wrapper for training. The <code class="highlighter-rouge">batch_data</code> is an iterator of data in 
+batches, which needs to be called everytime once an <code class="highlighter-rouge">epoch</code> is over. Because, it will run out of data, 
+as it it iterates over each batch in every epoch. <code class="highlighter-rouge">batch_xs</code>, is a matrix of Bag of word vector of 
+documents. Normally, <code class="highlighter-rouge">batch_xs</code> is of shape <script type="math/tex">(100, V)</script>, where 100 is the <code class="highlighter-rouge">batch_size</code>. <code class="highlighter-rouge">mask_xs
+</code> is mask, which means wherever the index of <code class="highlighter-rouge">batch_xs</code> is not 0, we will have <code class="highlighter-rouge">1</code>, over that 
+index in <code class="highlighter-rouge">mask_xs</code>. In simple words, <code class="highlighter-rouge">batch_xs</code> hold the count of words in a document, where as <code class="highlighter-rouge">
+mask_xs</code>, holds a value of <code class="highlighter-rouge">1</code> in the corresponding index, just to indicate the presence of the word.</p>
+
+<p>If you are familar with Tensorflow, we have to feed the necessary data to the corresponding place holders.
+This is happened in <code class="highlighter-rouge">partial_fit</code> method. Note, we are passing <code class="highlighter-rouge">batch_xs.shape[0]</code>, because, 
+suppose we have batch of 100 documents and after pre-processing, we will be having only 98. So, the value 
+of batch after pre-processing might remain same or vary, from the original <code class="highlighter-rouge">batch_size</code>.</p>
+
+<p>Lets have a look at each function one by one. This might be boring to those who are super familiar with <code class="highlighter-rouge">Tensorflow</code>. But, those who wants to know more in a practical point of view, this might be useful. Inside the <code class="highlighter-rouge">NVDM</code> class, we have different functions.</p>
+
+<p>The <code class="highlighter-rouge">create_network</code>, will call <code class="highlighter-rouge">_initialize_weights</code> method, which is responsible for buliding the <code class="highlighter-rouge">Weights</code> and <code class="highlighter-rouge">biases</code>, for both encoder and decoder. It has been written, in such a way that, it will accept any layer of <code class="highlighter-rouge">encoder_hidden_dim</code>. Here, it is <code class="highlighter-rouge">[500, 500]</code>, so we will have <code class="highlighter-rouge">self.Weights_encoder</code> a dictionary, with keys as  <code class="highlighter-rouge">W_1</code> ,<code class="highlighter-rouge">W_2</code>, <code class="highlighter-rouge">'out_mean'</code> and  <code class="highlighter-rouge">'out_log_sigma'</code>, which is useful in finding a new sample as explained in re-parameterization trick. ‘<code class="highlighter-rouge">self._encoder_network</code>, is easy to understand, it has basic matrix multiplication with a non-linearity on the top, except at places where <code class="highlighter-rouge">out_mean</code> and <code class="highlighter-rouge">out_log_sigma</code> is used.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="bp">self</span><span class="o">.</span><span class="n">z_mean</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">z_log_sigma_sq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_encoder_network</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Weights_encoder</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Biases_encoder</span><span class="p">)</span>
+
+<span class="c"># Draw one sample z from Gaussian distribution</span>
+<span class="n">eps</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">random_normal</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">dynamic_batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_dim</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> 
+                       <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="c"># z = mu + sigma*epsilon ( Re-parameterization)</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">z_mean</span><span class="p">,</span> 
+                <span class="n">tf</span><span class="o">.</span><span class="n">mul</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">z_log_sigma_sq</span><span class="p">),</span> <span class="n">eps</span><span class="p">))</span></code></pre></figure>
+
+<p>This <code class="highlighter-rouge">self.z</code> sample, is used to re-construct the document vector (batch of document vector in practice). This is happening inside <code class="highlighter-rouge">self._generator_network</code>.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">x_reconstr_mean</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="o">*</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">,</span> <span class="n">weights</span><span class="p">[</span><span class="s">'out_mean'</span><span class="p">])),</span> 
+                                     <span class="n">biases</span><span class="p">[</span><span class="s">'out_mean'</span><span class="p">])</span></code></pre></figure>
+
+<p>The above equation is equivalent to Eq.24 in <a href="https://arxiv.org/abs/1511.06038">here</a>. There, the equation is shown on the basis of each word and <script type="math/tex">(x_i)</script> represents, the One-hot_K vector associated with each word in the vocab. Note, this one hot vector for words are different from Bag of words of document.</p>
+
+<p>So, we had all components necessary to calculate the loss function. In the Objective section, I have pointed out the loss function. This can be viewed as maximizing the log-likelihood of words present in each document and minimzing the KL divergence, between the distributions.</p>
+
+<script type="math/tex; mode=display">log P(X) >= \mathbb{E}_{Q(h|X)} log P(X| h) - KL(Q(h| X) || P(h| X))</script>
+
+<script type="math/tex; mode=display">\mathbb{E}_{Q(h|X)} log P(X| h) = \sum_{i=1}^L\sum_{n=1}^Nlog(log P(X| h)</script>
+
+<p><script type="math/tex">L</script> is the number of documents and <script type="math/tex">N</script> is the number of words (not the count of all words), present in each document. This will vary with document. To achieve this in fast matrix  operation, after calculating the ‘'’softmax’’’, we multiply the resultant matrix with the <code class="highlighter-rouge">mask_xs</code> ( which has 1 at the index where words are present and 0 if words are absent), matrix and then do the summation.</p>
+
+<script type="math/tex; mode=display">log P(X| h = softmax(-h^TR + bias)</script>
+
+<p><script type="math/tex">R^{(50,V)}</script>, is the matrix we have in <code class="highlighter-rouge">self.Weights_generator['out_mean']</code>. The interesting thing is once, we train the model, this <script type="math/tex">R</script>, acts as the <code class="highlighter-rouge">embedding matrix</code>.</p>
+
+<p>The loss function are defined inside <code class="highlighter-rouge">_create_loss_optimizer</code>.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">logits</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">X_reconstruction_mean</span><span class="p">)</span><span class="o">+</span><span class="mf">0.0001</span><span class="p">)</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">reconstr_loss</span>  <span class="o">=</span> <span class="o">-</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">mul</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="bp">self</span><span class="o">.</span><span class="n">kld</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">z_mean</span><span class="p">)</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">z_log_sigma_sq</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">z_log_sigma_sq</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="bp">self</span><span class="o">.</span><span class="n">cost</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reconstr_loss</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">kld</span>   <span class="c"># average over batch</span>
+<span class="c"># Use ADAM optimizer</span>
+
+<span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">AdamOptimizer</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span><span class="p">)</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cost</span> <span class="p">,</span> <span class="n">global_step</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">step</span><span class="p">)</span></code></pre></figure>
+
+<p>The equations for KL divergence is quite common and you can find it everywhere. In the original <a href="https://arxiv.org/abs/1511.06038">paper</a>, author used alternative update. But, i don’t think that is necessary. Here, we sum up the encoder loss and decoder loss. In the code, <code class="highlighter-rouge">generator</code>, stands for <code class="highlighter-rouge">decoder</code>. We use, <code class="highlighter-rouge">AdamOptimizer</code> for training. So, this is what is happening under the hood and the main wrapper fuunction is <code class="highlighter-rouge">_partial_fit</code>.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="k">def</span> <span class="nf">partial_fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span> <span class="p">,</span> <span class="n">dynamic_batch_size</span> <span class="p">,</span> <span class="n">MASK</span><span class="p">):</span>
+
+  
+        <span class="n">opt</span><span class="p">,</span> <span class="n">cost</span> <span class="p">,</span> <span class="n">recons_loss</span> <span class="p">,</span> <span class="n">kld</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost</span> <span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reconstr_loss</span> <span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">kld</span> <span class="p">),</span> 
+                                  <span class="n">feed_dict</span><span class="o">=</span><span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">:</span> <span class="n">X</span> <span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dynamic_batch_size</span><span class="p">:</span><span class="n">dynamic_batch_size</span><span class="p">,</span>
+                                            <span class="bp">self</span><span class="o">.</span><span class="n">MASK</span><span class="p">:</span><span class="n">MASK</span><span class="p">})</span>
+        <span class="k">return</span> <span class="n">opt</span> <span class="p">,</span> <span class="n">cost</span> <span class="p">,</span> <span class="n">recons_loss</span> <span class="p">,</span> <span class="n">kld</span> </code></pre></figure>
+
+<ul>
+  <li>
+    <h3 id="a-note-about-non-linear-functions"><em><strong>A note about non-linear functions</strong></em></h3>
+  </li>
+</ul>
+
+<blockquote>
+  <p>In the <a href="https://arxiv.org/abs/1511.06038">paper</a>, author has used <code class="highlighter-rouge">ReLU</code>, activation functions. But, don’t use it. I was 
+getting <code class="highlighter-rouge">nan</code> values after 2 iterations. The reason, I am thinking is our document vector has some 
+large values like 123, 371 , which are the count of words in the document. As, ReLU is doing max(0, N), this might be the reason. Use <code class="highlighter-rouge">tanh</code>. It will works fine. If you still want to use, <code class="highlighter-rouge">ReLU</code>, normalize your Bag of word matrix each time before passing to the model.</p>
+</blockquote>
+
+<ul>
+  <li>
+    <h3 id="evaluation-of-the-model"><em><strong>Evaluation of the model</strong></em></h3>
+  </li>
+</ul>
+
+<p>I have ran the model in p2.xlarge in AWS, for 1000 iterations and it took around 6 hrs. The model can be 
+found inside the github <a href="https://github.com/s4sarath/Deep-Learning-Projects/tree/master/variational_text_inference">repo</a>. I have used the embedding matrix to find similar words and results are 
+very good. I have uploaded a ipython notebook <code class="highlighter-rouge">model_evaluation.ipynb</code>, which shows how to use the 
+model to extract the embedding matrix and find similar words.</p>
+
+<p>Here are examples of some words</p>
+
+<p>jesus</p>
+
+<p><code class="highlighter-rouge">[('jesus', 0.99999988),
+ ('christ', 0.85499293),
+ ('christian', 0.77007663),
+ ('christians', 0.75781548),
+ ('bible', 0.75542903),
+ ('heaven', 0.74329948),
+ ('god', 0.73894531),
+ ('sin', 0.72564238),
+ ('follow', 0.71326089),
+ ('faith', 0.69616199)]
+</code></p>
+
+<p>scientist</p>
+
+<p><code class="highlighter-rouge">[('scientist', 1.0),
+ ('hypothesis', 0.79111576),
+ ('mathematics', 0.7701571),
+ ('empirical', 0.74546576),
+ ('experiment', 0.74009466),
+ ('scientists', 0.73293155),
+ ('observations', 0.72646093),
+ ('psychology', 0.72322875),
+ ('homeopathy', 0.7231313),
+ ('methodology', 0.71882892)]
+</code></p>
+
+<p>football</p>
+
+<p><code class="highlighter-rouge">[('football', 1.0000001),
+ ('stadium', 0.85528636),
+ ('basketball', 0.8517698),
+ ('philly', 0.83852005),
+ ('mlb', 0.83592558),
+ ('robbie', 0.83328015),
+ ('anyways', 0.82795608),
+ ('seats', 0.82188618),
+ ('miami', 0.82166839),
+ ('champs', 0.81938583)]
+</code></p>
+
+<ul>
+  <li>
+    <h3 id="similar-documents"><em><strong>Similar Documents</strong></em></h3>
+  </li>
+</ul>
+
+<p>The hidden dimensions for each document can be used to calculate similar documents. The function used here
+is mentioned in the notebook. This is very useful in information retrieving tasks.</p>
+
+<ul>
+  <li>
+    <h3 id="clustering"><em><strong>Clustering</strong></em></h3>
+  </li>
+</ul>
+
+<p>The same model, with the hidden  representaions can be used for clustering. The following 
+figure has been generated on 20 news group dataset, by projecting each 50 dimension hidden 
+state of every document into <code class="highlighter-rouge">tsne</code> . The plot looks very promising .</p>
+
+<p style="text-align:center;">
+<img src="http://localhost:4000/assets/variational_autoencoder/20-news-group.png" alt="Failed to load 20-
+news-group image" />
+</p>
+
+<hr />
+
+<p>I would like to thank the author’s of the <a href="https://arxiv.org/abs/1511.06038">paper</a>, for giving a intuitive idea of VAE 
+in NLP point of view. And I would like to thank my friend Carolyn Augusta, (explanation about 
+Variational Bayes and Re-parameterization was from her courtesy). I hope, she will be having a 
+detailed writing about the Variational Bayes soon. Please do point out the mistakes, if you 
+found any.</p>
+
+
+  </article>
+
+
+  <div id="disqus_thread"></div>
+  <script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES * * */
+    var disqus_shortname = 's4sarath-github-io';
+              
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+
+
+  <script type="text/javascript" 
+    src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+  </script>
+
+</div>
+
+      </div>
+    </div>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Share a Bit</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col  footer-col-1">
+        <ul class="contact-list">
+          <li>Share a Bit</li>
+          <li><a href="mailto:s4sarath@gmail.com">s4sarath@gmail.com</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col  footer-col-2">
+        <ul class="social-media-list">
+          
+          <li>
+            <a href="https://github.com/s4sarath">
+              <span class="icon  icon--github">
+                <svg viewBox="0 0 16 16">
+                  <path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/>
+                </svg>
+              </span>
+
+              <span class="username">s4sarath</span>
+            </a>
+          </li>
+          
+
+          
+          <li>
+            <a href="https://twitter.com/(Never!)">
+              <span class="icon  icon--twitter">
+                <svg viewBox="0 0 16 16">
+                  <path fill="#828282" d="M15.969,3.058c-0.586,0.26-1.217,0.436-1.878,0.515c0.675-0.405,1.194-1.045,1.438-1.809
+                  c-0.632,0.375-1.332,0.647-2.076,0.793c-0.596-0.636-1.446-1.033-2.387-1.033c-1.806,0-3.27,1.464-3.27,3.27 c0,0.256,0.029,0.506,0.085,0.745C5.163,5.404,2.753,4.102,1.14,2.124C0.859,2.607,0.698,3.168,0.698,3.767 c0,1.134,0.577,2.135,1.455,2.722C1.616,6.472,1.112,6.325,0.671,6.08c0,0.014,0,0.027,0,0.041c0,1.584,1.127,2.906,2.623,3.206 C3.02,9.402,2.731,9.442,2.433,9.442c-0.211,0-0.416-0.021-0.615-0.059c0.416,1.299,1.624,2.245,3.055,2.271 c-1.119,0.877-2.529,1.4-4.061,1.4c-0.264,0-0.524-0.015-0.78-0.046c1.447,0.928,3.166,1.469,5.013,1.469 c6.015,0,9.304-4.983,9.304-9.304c0-0.142-0.003-0.283-0.009-0.423C14.976,4.29,15.531,3.714,15.969,3.058z"/>
+                </svg>
+              </span>
+
+              <span class="username">(Never!)</span>
+            </a>
+          </li>
+          
+        </ul>
+      </div>
+
+      <div class="footer-col  footer-col-3">
+        <p class="text">This is my blog, where I scribble about my thoughts , feelings and knowledge . "As the heat of fire reduces wood to ashes, the fire of knowledge burns to ashes all karma - Krishna"
+</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>
