@@ -4,44 +4,40 @@ layout: default
 
 <div class="home">
 
-  <h1 class="page-heading">My Blog Posts, in Reverse Chronological Order</h1>
+  <h1 class="page-heading">As for me, All I know is that I know nothing</h1>
   <p class="rss-subscribe">subscribe <a href="{{ "/feed.xml" | prepend: site.baseurl }}">via RSS</a></p>
  
   <!-- This loops through the paginated posts -->
-  <!--
+  
+<!--   <ul class="post-list">
+    {% for post in paginator.posts %}
+      <li>
+        <span class="post-meta">{{ post.date | date: "%b %-d, %Y" }}</span>
+        <h2>
+          <a class="post-link" href="{{ post.url | prepend: site.baseurl }}">{{ post.title }}</a>
+        </h2>
+        <h3> {{ post.excerpt }} </h3>
+      </li>
+    {% endfor %}
+  </ul> -->
+
+
   <ul class="post-list">
     {% for post in paginator.posts %}
       <li>
         <span class="post-meta">{{ post.date | date: "%b %-d, %Y" }}</span>
-
-        <h2>
           <a class="post-link" href="{{ post.url | prepend: site.baseurl }}">{{ post.title }}</a>
-        </h2>
+        {{post.excerpt}}   
+        <br>
       </li>
     {% endfor %}
   </ul>
-  -->
-
-  {% for post in paginator.posts %}
-    <h1><a href="{{ post.url }}">{{ post.title }}</a></h1>
-       <p class="author">
-         <span class="date">{{ post.date | date: "%b %-d, %Y" }}</span>
-       </p>
-    <div class="content">
-      {{ post.content }}
-    </div>
-    <br>
-    <br>
-    <hr>
-    <hr>
-    <hr>
-    <hr>
-    <hr>
-    <br>
-    <br>
-  {% endfor %}
+  
+  
 
 
+
+<!-- 
   {% if paginator.total_pages > 1 %}
   <div class="pagination">
     {% if paginator.previous_page %}
@@ -66,10 +62,8 @@ layout: default
       <span>Next &raquo;</span>
     {% endif %}
   </div>
-  {% endif %}
+  {% endif %} -->
 
-  <script type="text/javascript" 
-    src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
-  </script>
+  
 
 </div>

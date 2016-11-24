@@ -3,7 +3,8 @@ layout: post
 title:  "Variational Autoencoder (VAE) for Natural Language Processing"
 date:   2016-11-23 10:00:00
 permalink: 2016/11/23/variational_autoenocder_for_Natural_Language_Processing
-tags: deep learning, nlp, autoencoder , variational , tensorflow 
+excerpt: "An overview and practical implementation of Neural Variational Text Processing in Tensorflow"
+tags: [ deep learning, nlp, autoencoder , variational , tensorflow ] 
 ---
 
 This is my first ever blog post. So, it might have lot of mistakes and other

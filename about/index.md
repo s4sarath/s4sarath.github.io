@@ -8,7 +8,7 @@ and a lot .
 s4sarath@gmail.com.
 
 <p style="text-align:center;">
-<img src="{{site.url}}/assets/karma.jpg" height="400" width="400"
+<img src="{{site.url}}/assets/vivekand.jpg" height="453" width="700"
 alt="sarath"><br>
 
 2016
